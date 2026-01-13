@@ -320,8 +320,7 @@ def mc_predict(params, x, key, p=0.5, num_samples=100):
 
     # Epistemic Uncertainty
     mutual_information = predictive_entropy - expected_entropy
-
-
+    
     return {
         'mean_predictions': mean_predictions,
         'variance': predictive_variance,
