@@ -297,9 +297,39 @@ def mc_predict(params, x, key, p=0.5, num_samples=100):
     )
 
     predictions = vectorised_forward(params, x, keys, p, True)
-    predictions = jnp.mean(predictions, axis=0)
+
+    # Compute metrics
+    mean_predictions = jnp.mean(predictions, axis=0)
+    mean_variance = jnp.var(predictions, axis=0)
+    predictive_std = jnp.std(all_predictions, axis=0)
+
+    # Calculate predictive entropy
+    epsilon = 1e-10
+    predictive_entropy = -jnp.sum(
+        mean_predictions * jnp.log(mean_predictions + epsilon),
+        axis = -1
+    )
+
+    # Expected entropy
+    sample_entropies = -jnp.sum(
+        all_predictions * jnp.log(all_predictions + epsilon)
+        axis = -1
+    )
     
-    return predictions
+    expected_entropy = jnp.mean(sample_entropies, axis=0)
+
+    # Epistemic Uncertainty
+    mutual_information = predictive_entropy - expected_entropy
+
+
+    return {
+        'mean_predictions': mean_predictions,
+        'variance': predictive_variance,
+        'std': predictive_std,
+        'predictive_entropy': predictive_entropy,
+        'mutual_information': mutual_information,
+        'all_predictions': all_predictions  
+    }
 
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
