@@ -105,26 +105,45 @@ def softmax(x):
     exp_x = jnp.exp(x-jnp.max(x, axis=-1, keepdims=True))
     return exp_x/ jnp.sum(exp_x, axis=-1, keepdims=True)
 
-def forward_pass(params, x):
+def forward_pass(params, x, key, p=0.5, apply_dropout=False):
     """Forward propagation through the network
     
     Args:
         params: List of Weight and Bias tuples
         x: Input data of shape (batch_size, input_dim)
+        key: JAX PRNG key (required if apply_dropout=True)
+        p: Dropout probability
+        apply_dropout: Whether to apply dropout (True for training and MC predictions)
         
     Returns:
         Output probabilities of shape (batch_sixe, num_classes)
     """
 
+    if apply_droput and key is None:
+        raise ValueError("key must be provide when apply dropout=True")
+
     activations = x
 
+    # Create dropout keys for all layers but final layer
+    if apply_dropout:
+        num_layers = len(params) - 1
+        dropout_keys = jax.random.split(key, num_layers)
+
     # Pass through all layers bar the last one
-    for W, b in params[:-1]:
+    for i, (W, b) in enumerate(params[:-1]:)
         # multiply input by Weight and bias
         z = activations @ W + b
 
         # non-linear activation
         activations = relu(z)
+
+        # Apply dropout after relu
+        if apply_dropout:
+            # Generate dropout masks
+            mask = jax.random.bernoulli(dropout_keys[i], 1-p, activations.shape)
+
+            # Apply mask and scale
+            activations = activations * mask / (1 - p)
 
     # final output layer with softmax
     W_final, b_final = params[-1]
