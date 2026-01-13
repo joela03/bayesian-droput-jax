@@ -297,7 +297,8 @@ def mc_predict(params, x, key, p=0.5, num_samples=100):
     )
 
     predictions = vectorised_forward(params, x, keys, p, True)
-
+    predictions = jnp.mean(predictions, axis=0)
+    
     return predictions
 
 def training_network(params, X_train, y_train, X_test, y_test,
