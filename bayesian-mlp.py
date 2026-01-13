@@ -274,6 +274,32 @@ def create_batches(X, y, batch_size, key):
 
     return batches
 
+def mc_predict(params, x, key, p=0.5, num_samples=100):
+    """
+    Multiple forward passes with dropout for uncertainty estimation
+    
+    Args:
+        params: List of Weight and Bias tuples
+        x: Input data of shape (batch_size, input_dim)
+        key: JAX PRNG key (required if apply_dropout=True)
+        p: Dropout probability
+
+    Returns:
+        predictions: shape (num_samples, batch_size, num_classes)
+    """
+
+    keys = jax.random.split(key, num_samples)
+
+    # vmap to vectorise function call (turn 100 forward passes into 1 batched forward pass)
+    vectorised_forward = jax.vmap(
+        forward_pass,
+        in_axes=(None, None, 0, None, None)
+    )
+
+    predictions = vectorised_forward(params, x, keys, p, True)
+
+    return predictions
+
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
