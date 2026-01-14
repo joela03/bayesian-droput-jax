@@ -105,7 +105,7 @@ def softmax(x):
     exp_x = jnp.exp(x-jnp.max(x, axis=-1, keepdims=True))
     return exp_x/ jnp.sum(exp_x, axis=-1, keepdims=True)
 
-def forward_pass(params, x, key, p=0.5, apply_dropout=False):
+def forward_pass(params, x, key=None, p=0.5, apply_dropout=False):
     """Forward propagation through the network
     
     Args:
@@ -119,7 +119,7 @@ def forward_pass(params, x, key, p=0.5, apply_dropout=False):
         Output probabilities of shape (batch_sixe, num_classes)
     """
 
-    if apply_droput and key is None:
+    if apply_dropout and key is None:
         raise ValueError("key must be provide when apply dropout=True")
 
     activations = x
