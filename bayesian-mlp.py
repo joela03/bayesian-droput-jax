@@ -394,57 +394,57 @@ def training_network(params, X_train, y_train, X_test, y_test,
     
     return params
 
-    def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indices=None): 
-        """Test model and display uncertainty metrics"""
+def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indices=None): 
+    """Test model and display uncertainty metrics"""
 
-        # Sample randomly if no indices
-        if sample_indices is None:
-            sample_key, key = jax.random.split(key)
-            sample_indices = jax.random.choice(
-                sample_key, len(X_test), shape = (5,), replace=False
-            )
-        
-        pred_key = key
+    # Sample randomly if no indices
+    if sample_indices is None:
+        sample_key, key = jax.random.split(key)
+        sample_indices = jax.random.choice(
+            sample_key, len(X_test), shape = (5,), replace=False
+        )
+    
+    pred_key = key
 
-        for idx in sample_indices:
-            x_sample = X_test[idx:idx+1]
-            y_true = y_test[idx]
+    for idx in sample_indices:
+        x_sample = X_test[idx:idx+1]
+        y_true = y_test[idx]
 
-            # Get predictions with uncertainty
-            pred_key, subkey = jax.random.split(pred_key)
-            results = mc_predict(params, x_sample, subkey, p=0.5, num_samples=100)
+        # Get predictions with uncertainty
+        pred_key, subkey = jax.random.split(pred_key)
+        results = mc_predict(params, x_sample, subkey, p=0.5, num_samples=100)
 
-            # Get metrics
-            mean_pred = results['mean_prediction'][0]
-            std = results['std'][0]
-            pred_entropy = results['predictive_entropy'][0]
-            mutual_info = results['mutual_information'][0]
+        # Get metrics
+        mean_pred = results['mean_prediction'][0]
+        std = results['std'][0]
+        pred_entropy = results['predictive_entropy'][0]
+        mutual_info = results['mutual_information'][0]
 
-            y_pred = jnp.argmax(mean_pred)
-            confidence = mean_pred[y_pred]
-            uncertainty_in_pred = std[y_pred]
+        y_pred = jnp.argmax(mean_pred)
+        confidence = mean_pred[y_pred]
+        uncertainty_in_pred = std[y_pred]
 
-        # Display results
-        correct = "✓" if y_pred == y_true else "✗"
-        print(f"{correct} Sample {idx}")
-        print(f"  True Label:      {class_names[y_true]}")
-        print(f"  Predicted:       {class_names[y_pred]}")
-        print(f"  Confidence:      {confidence:.2%}")
-        print(f"  Pred. Std Dev:   {uncertainty_in_pred:.4f}")
-        print(f"\n  Uncertainty Metrics:")
-        print(f"    Predictive Entropy:   {pred_entropy:.4f}  (total uncertainty)")
-        print(f"    Mutual Information:   {mutual_info:.4f}  (model uncertainty)")
-        
-        # Show top-3 predictions with uncertainty
-        top3_indices = jnp.argsort(mean_pred)[-3:][::-1]
-        print(f"\n  Top 3 Predictions:")
-        for i, class_idx in enumerate(top3_indices):
-            prob = mean_pred[class_idx]
-            uncertainty = std[class_idx]
-            print(f"    {i+1}. {class_names[class_idx]:12s}  "
-                  f"Prob: {prob:.2%}  Std: {uncertainty:.4f}")
-        
-        print(f"{'-'*70}\n")
+    # Display results
+    correct = "✓" if y_pred == y_true else "✗"
+    print(f"{correct} Sample {idx}")
+    print(f"  True Label:      {class_names[y_true]}")
+    print(f"  Predicted:       {class_names[y_pred]}")
+    print(f"  Confidence:      {confidence:.2%}")
+    print(f"  Pred. Std Dev:   {uncertainty_in_pred:.4f}")
+    print(f"\n  Uncertainty Metrics:")
+    print(f"    Predictive Entropy:   {pred_entropy:.4f}  (total uncertainty)")
+    print(f"    Mutual Information:   {mutual_info:.4f}  (model uncertainty)")
+    
+    # Show top-3 predictions with uncertainty
+    top3_indices = jnp.argsort(mean_pred)[-3:][::-1]
+    print(f"\n  Top 3 Predictions:")
+    for i, class_idx in enumerate(top3_indices):
+        prob = mean_pred[class_idx]
+        uncertainty = std[class_idx]
+        print(f"    {i+1}. {class_names[class_idx]:12s}  "
+                f"Prob: {prob:.2%}  Std: {uncertainty:.4f}")
+    
+    print(f"{'-'*70}\n")
 
 def main():
     """Main function which demonstrates the entire ML Pipeline"""
