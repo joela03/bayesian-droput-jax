@@ -320,7 +320,7 @@ def mc_predict(params, x, key, p=0.5, num_samples=100):
 
     # Epistemic Uncertainty
     mutual_information = predictive_entropy - expected_entropy
-    
+
     return {
         'mean_predictions': mean_predictions,
         'variance': predictive_variance,
@@ -450,6 +450,9 @@ def main():
     # Sample predictions
     class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                    'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+    # Standard predictions (without dropout)
+    print("STANDARD PREDICTIONS (No Dropout)")
 
     key, sample_key = jax.random.split(key)
     sample_indices = jax.random.choice(sample_key, len(X_test), shape=(5,), replace=False)
