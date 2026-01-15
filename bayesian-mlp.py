@@ -415,7 +415,7 @@ def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indic
         results = mc_predict(params, x_sample, subkey, p=0.5, num_samples=100)
 
         # Get metrics
-        mean_pred = results['mean_prediction'][0]
+        mean_pred = results['mean_predictions'][0]
         std = results['std'][0]
         pred_entropy = results['predictive_entropy'][0]
         mutual_info = results['mutual_information'][0]
