@@ -412,7 +412,7 @@ def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indic
 
         # Get predictions with uncertainty
         pred_key, subkey = jax.random.split(pred_key)
-        results = mc_predict(params, x_sample, subkey, p=0.5, num_samples=100)
+        results = mc_predict(params, x_sample, subkey, p=0.25, num_samples=100)
 
         # Get metrics
         mean_pred = results['mean_predictions'][0]
