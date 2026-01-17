@@ -4,6 +4,7 @@ from jax import grad, jit
 import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
+import plt
 import time
 
 
@@ -419,32 +420,53 @@ def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indic
         std = results['std'][0]
         pred_entropy = results['predictive_entropy'][0]
         mutual_info = results['mutual_information'][0]
+        entropies.append(pred_entropy)
 
         y_pred = jnp.argmax(mean_pred)
         confidence = mean_pred[y_pred]
         uncertainty_in_pred = std[y_pred]
 
-    # Display results
-    correct = "✓" if y_pred == y_true else "✗"
-    print(f"{correct} Sample {idx}")
-    print(f"  True Label:      {class_names[y_true]}")
-    print(f"  Predicted:       {class_names[y_pred]}")
-    print(f"  Confidence:      {confidence:.2%}")
-    print(f"  Pred. Std Dev:   {uncertainty_in_pred:.4f}")
-    print(f"\n  Uncertainty Metrics:")
-    print(f"    Predictive Entropy:   {pred_entropy:.4f}  (total uncertainty)")
-    print(f"    Mutual Information:   {mutual_info:.4f}  (model uncertainty)")
-    
-    # Show top-3 predictions with uncertainty
-    top3_indices = jnp.argsort(mean_pred)[-3:][::-1]
-    print(f"\n  Top 3 Predictions:")
-    for i, class_idx in enumerate(top3_indices):
-        prob = mean_pred[class_idx]
-        uncertainty = std[class_idx]
-        print(f"    {i+1}. {class_names[class_idx]:12s}  "
-                f"Prob: {prob:.2%}  Std: {uncertainty:.4f}")
-    
-    print(f"{'-'*70}\n")
+        plot_uncertainty(
+            results['mean_predictions'][0],
+            results['std'][0],
+            class_names,
+            filename=f"figures/sample_{idx}_barplot.png"
+        )
+
+        # Display results
+        correct = "✓" if y_pred == y_true else "✗"
+        print(f"{correct} Sample {idx}")
+        print(f"  True Label:      {class_names[y_true]}")
+        print(f"  Predicted:       {class_names[y_pred]}")
+        print(f"  Confidence:      {confidence:.2%}")
+        print(f"  Pred. Std Dev:   {uncertainty_in_pred:.4f}")
+        print(f"\n  Uncertainty Metrics:")
+        print(f"    Predictive Entropy:   {pred_entropy:.4f}  (total uncertainty)")
+        print(f"    Mutual Information:   {mutual_info:.4f}  (model uncertainty)")
+        
+        # Show top-3 predictions with uncertainty
+        top3_indices = jnp.argsort(mean_pred)[-3:][::-1]
+        print(f"\n  Top 3 Predictions:")
+        for i, class_idx in enumerate(top3_indices):
+            prob = mean_pred[class_idx]
+            uncertainty = std[class_idx]
+            print(f"    {i+1}. {class_names[class_idx]:12s}  "
+                    f"Prob: {prob:.2%}  Std: {uncertainty:.4f}")
+        
+        print(f"{'-'*70}\n")
+
+def plot_uncertainty(mean_probs, std_probs, class_names, filename):
+    x = range(len(class_names))
+
+    plt.figure(figsize=(10, 4))
+    plt.bar(x, mean_probs, yerr=std_probs, capsize=5)
+    plt.xticks(x, class_names, rotation=45)
+    plt.ylabel("Probability")
+    plt.title("Predictive Mean with Uncertainty (MC Dropout)")
+    plt.tight_layout()
+
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.close()
 
 def main():
     """Main function which demonstrates the entire ML Pipeline"""
