@@ -331,6 +331,39 @@ def mc_predict(params, x, key, p=0.5, num_samples=100):
         'predictions': predictions  
     }
 
+def train_ensemble(X_train, y_train, X_test, y_test,
+                num_models=5, layer_sizes=[784, 128, 64, 10]):
+    """Train multiple independent models"""
+
+    ensemble = []
+
+    for i in range(num_models):
+        print(f"Training Ensemble Model {i+1}/{num_models}")
+
+        # Different random seed for each model
+        key = jax.random.key(42 + i)
+
+        # Initialise with different weights
+        key, init_key = jax.random.split(key)
+        params = init_network_params(layer_sizes, init_key)
+
+        # Train the model
+        key, training_key = jax.random.split(key)
+        trained_params = training_network(
+            params, X_train, y_train, X_test, y_test,
+            epochs=20, batch_size = 128, learning_rate=0.01,
+            key=training_key
+        )
+
+        # Store trained model
+        ensemble.append(trained_params)
+
+        # Evaluate this model
+        acc = accuracy(trained_params, X_test, y_test)
+        print(f"Model {i+1 } Test Accuracy: {acc:.4f}")
+
+    return ensemble
+
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
