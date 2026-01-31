@@ -391,6 +391,46 @@ def ensemble_predict(ensemble, x):
 
     return mean_predictions, all_predictions
 
+def compute_ensemble_uncertainty(all_predictions):
+    """Compute uncertainty metrics from ensemble predictions
+    
+    Args:
+        all_predictions: (num_models, batch_size, num_classes)
+    Returns:
+        Dictionary with uncertainty metrics    
+    """
+
+    # Mean prediction
+    mean_pred = jnp.mean(all_predictions, axis=0)
+
+    # Variance
+    variance = jnp.var(all_predictions, axis=0)
+    std = jnp.std(all_predictions, axis=0)
+
+    # Predictive entropy of mean
+    epsilon = 1e-10
+    pred_entropy = -jn.sum(mean_pred * jnp.log(mean_pred + epsilon), axis=-1)
+
+    # Expected entropy
+    individual_entropies = -jnp.sum(
+        all_predictions * jnp.log(all_predictions + epsilon),
+        axis=-1
+        )
+    expected_entropy = jnp.mean(individual_entropies, axis=0)
+
+    # Mutual information
+    mutual_info = pred_entropy - expected_entropy
+
+    return {
+        'mean_predictions': mean_pred,
+        'all_predictions': all_predictions,
+        'variance': variance,
+        'std': std,
+        'predictive_entropy': pred_entropy,
+        'expected_entropy': expected_entropy,
+        'mutual_information': mutual_info
+    }
+    
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
