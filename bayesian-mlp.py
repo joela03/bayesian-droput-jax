@@ -364,6 +364,33 @@ def train_ensemble(X_train, y_train, X_test, y_test,
 
     return ensemble
 
+def ensemble_predict(ensemble, x):
+    """
+    Get predictions from all models in ensemble
+    
+    Args:
+        ensembe: List of trained parameter sets
+        x: Input data (batch_size, features)
+    
+    Returns:
+        mean_predictions: Average prediction across ensemble
+        all_predictions: Individual predictions from each model (for unce)
+    """
+
+    # Get prediction from each model
+    predictions = []
+    for params in ensemble:
+        pred = forward_pass(params, x)
+        prediction.append(pred)
+
+    # Stack: (num_models, batch_size, num_classes)
+    all_predictios = jnp.stack(predictions, axis=0)
+
+    # Mean prediction
+    mean_predictions = jnp.mean(all_predictions, axis=0)
+
+    return mean_predictions, all_predictions
+
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
