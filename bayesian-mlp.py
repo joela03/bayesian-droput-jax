@@ -431,6 +431,59 @@ def compute_ensemble_uncertainty(all_predictions):
         'mutual_information': mutual_info
     }
 
+def test_ensemble(ensemble, X_test, y_test, class_names, sample_indices=None):
+    """Test ensemble and display uncertainty"""
+    
+    if sample_indices is None:
+        key = jax.random.key(42)
+        sample_indices = jax.random.choice(key, len(X_test), shape=(5,), replace=False)
+    
+    print("ENSEMBLE PREDICTIONS WITH UNCERTAINTY")
+    print(f"Using {len(ensemble)} Independent Models")
+    
+    for idx in sample_indices:
+        x_sample = X_test[idx:idx+1]
+        y_true = y_test[idx]
+        
+        # Get ensemble predictions
+        mean_pred, all_preds = ensemble_predict(ensemble, x_sample)
+        results = compute_ensemble_uncertainty(all_preds)
+        
+        # Extract metrics
+        mean_pred = results['mean_predictions'][0]
+        std = results['std'][0]
+        pred_entropy = results['predictive_entropy'][0]
+        mutual_info = results['mutual_information'][0]
+        
+        y_pred = jnp.argmax(mean_pred)
+        confidence = mean_pred[y_pred]
+        
+        # Plot uncertainty
+        plot_uncertainty(
+            mean_pred, std, class_names,
+            filename=f"figures/ensemble_sample_{idx}_barplot.png"
+        )
+        
+        # Display results
+        correct = "✓" if y_pred == y_true else "✗"
+        print(f"{correct} Sample {idx}")
+        print(f"  True Label:      {class_names[y_true]}")
+        print(f"  Predicted:       {class_names[y_pred]}")
+        print(f"  Confidence:      {confidence:.2%}")
+        print(f"  Pred. Std Dev:   {std[y_pred]:.4f}")
+        print(f"\n  Uncertainty Metrics:")
+        print(f"    Predictive Entropy:   {pred_entropy:.4f}")
+        print(f"    Mutual Information:   {mutual_info:.4f}")
+        
+        # Top 3
+        top3 = jnp.argsort(mean_pred)[-3:][::-1]
+        print(f"\n  Top 3 Predictions:")
+        for i, cls in enumerate(top3):
+            print(f"    {i+1}. {class_names[cls]:12s}  "
+                  f"Prob: {mean_pred[cls]:.2%}  Std: {std[cls]:.4f}")
+        
+        print(f"{'-'*70}\n")
+
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
