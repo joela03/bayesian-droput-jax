@@ -381,10 +381,10 @@ def ensemble_predict(ensemble, x):
     predictions = []
     for params in ensemble:
         pred = forward_pass(params, x)
-        prediction.append(pred)
+        predictions.append(pred)
 
     # Stack: (num_models, batch_size, num_classes)
-    all_predictios = jnp.stack(predictions, axis=0)
+    all_predictions = jnp.stack(predictions, axis=0)
 
     # Mean prediction
     mean_predictions = jnp.mean(all_predictions, axis=0)
@@ -409,7 +409,7 @@ def compute_ensemble_uncertainty(all_predictions):
 
     # Predictive entropy of mean
     epsilon = 1e-10
-    pred_entropy = -jn.sum(mean_pred * jnp.log(mean_pred + epsilon), axis=-1)
+    pred_entropy = -jnp.sum(mean_pred * jnp.log(mean_pred + epsilon), axis=-1)
 
     # Expected entropy
     individual_entropies = -jnp.sum(
@@ -430,7 +430,7 @@ def compute_ensemble_uncertainty(all_predictions):
         'expected_entropy': expected_entropy,
         'mutual_information': mutual_info
     }
-    
+
 def training_network(params, X_train, y_train, X_test, y_test,
                    epochs=10, batch_size=128, learning_rate=0.01, key=None):
     """
