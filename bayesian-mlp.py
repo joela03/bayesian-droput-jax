@@ -701,6 +701,25 @@ def main():
     print("\nBAYESIAN PREDICTIONS WITH UNCERTAINTY QUANTIFICATION")
     print("Using Monte Carlo Dropout (100 samples per prediction)\n")
 
+    print("TRAINING ENSEMBLE (5 Models)")
+    
+    ensemble = train_ensemble(
+        X_train, y_train, X_test, y_test,
+        num_models=5,
+        layer_sizes=[784, 128, 64, 10]
+    )
+    
+    # Test ensemble
+    key, sample_key = jax.random.split(key)
+    sample_indices = jax.random.choice(sample_key, len(X_test), shape=(5,), replace=False)
+    
+    test_ensemble(ensemble, X_test, y_test, class_names, sample_indices)
+    
+    # Compare with MC Dropout
+    print("\n" + "="*70)
+    print("COMPARISON: MC Dropout vs Ensemble")
+    print("="*70)    
+
     key, mc_key = jax.random.split(key)
     test_with_uncertainty(trained_params, X_test, y_test, class_names, mc_key, sample_indices)
 
