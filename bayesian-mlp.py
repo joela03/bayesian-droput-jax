@@ -560,6 +560,9 @@ def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indic
     
     pred_key = key
 
+    # Initialise list to store entropies
+    entropies =[]
+
     for idx in sample_indices:
         x_sample = X_test[idx:idx+1]
         y_true = y_test[idx]
