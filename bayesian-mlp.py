@@ -460,11 +460,11 @@ def test_ensemble(ensemble, X_test, y_test, class_names, sample_indices=None):
         y_pred = jnp.argmax(mean_pred)
         confidence = mean_pred[y_pred]
         
-        # Plot uncertainty
-        plot_uncertainty(
-            mean_pred, std, class_names,
-            filename=f"figures/ensemble_sample_{idx}_barplot.png"
-        )
+        # Uncomment if you want to plot uncertainty
+        # plot_uncertainty(
+        #     mean_pred, std, class_names,
+        #     filename=f"figures/ensemble_sample_{idx}_barplot.png"
+        # )
         
         # Display results
         correct = "✓" if y_pred == y_true else "✗"
@@ -584,12 +584,13 @@ def test_with_uncertainty(params, X_test, y_test, class_names, key, sample_indic
         confidence = mean_pred[y_pred]
         uncertainty_in_pred = std[y_pred]
 
-        plot_uncertainty(
-            results['mean_predictions'][0],
-            results['std'][0],
-            class_names,
-            filename=f"figures/sample_{idx}_barplot.png"
-        )
+        # Code below plots uncertainty, uncomment if you would like to plot
+        # plot_uncertainty(
+        #     results['mean_predictions'][0],
+        #     results['std'][0],
+        #     class_names,
+        #     filename=f"figures/sample_{idx}_barplot.png"
+        # )
 
         # Display results
         correct = "✓" if y_pred == y_true else "✗"
@@ -905,13 +906,20 @@ def main():
     
     test_ensemble(ensemble, X_test, y_test, class_names, sample_indices)
     
-    # Compare with MC Dropout
-    print("\n" + "="*70)
-    print("COMPARISON: MC Dropout vs Ensemble")
-    print("="*70)    
+    # Comparison visualisation
 
     key, mc_key = jax.random.split(key)
     test_with_uncertainty(trained_params, X_test, y_test, class_names, mc_key, sample_indices)
+
+    key, viz_key = jax.random.split(key)
+    create_visualization_figures(
+        trained_params, 
+        ensemble, 
+        X_test, 
+        y_test, 
+        class_names, 
+        viz_key
+    )
 
 if __name__ == "__main__":
     main()
