@@ -4,6 +4,8 @@ from jax import grad, jit
 import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
+import os
+import matplotlib.pyplot as plt
 import plt
 import time
 
@@ -623,6 +625,191 @@ def plot_uncertainty(mean_probs, std_probs, class_names, filename):
 
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     plt.close()
+
+def create_visualization_figures(trained_params, ensemble, X_test, y_test, class_names, key):
+    """
+    Generate 3 key visualization figures:
+    1. Standard vs Bayesian comparison (shows the confidence gap)
+    2. Entropy distribution across 1000 samples
+    3. MC Dropout vs Ensemble comparison
+    
+    All figures saved to ./figures/
+    """
+    
+    os.makedirs('figures', exist_ok=True)
+    
+    print("\n" + "="*70)
+    print("CREATING VISUALIZATION FIGURES")
+    print("="*70)
+    
+    # Select samples
+    key, sample_key = jax.random.split(key)
+    sample_indices = jax.random.choice(sample_key, len(X_test), shape=(5,), replace=False)
+    
+    # FIGURE 1: Standard vs Bayesian Comparison
+    print("\n[1/3] Standard vs Bayesian comparison...")
+    
+    # Collect data
+    samples = []
+    std_conf = []
+    bay_conf = []
+    bay_mi = []
+    bay_std = []
+    
+    for idx in sample_indices:
+        x_sample = X_test[idx:idx+1]
+        y_true = y_test[idx]
+        
+        # Standard
+        std_pred = forward_pass(trained_params, x_sample)[0]
+        std_conf.append(float(jnp.max(std_pred)) * 100)
+        samples.append(class_names[y_true])
+        
+        # Bayesian
+        key, subkey = jax.random.split(key)
+        results = mc_predict(trained_params, x_sample, subkey, p=0.25, num_samples=100)
+        bay_conf.append(float(jnp.max(results['mean_predictions'][0])) * 100)
+        bay_mi.append(float(results['mutual_information'][0]))
+        bay_std.append(float(jnp.mean(results['std'][0])) * 100)
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    x = np.arange(len(samples))
+    
+    # Standard
+    bars1 = ax1.bar(x, std_conf, color='#2E86AB', alpha=0.8, width=0.6)
+    ax1.set_ylabel('Confidence (%)', fontsize=11, weight='bold')
+    ax1.set_title('Standard Predictions', fontsize=12, weight='bold')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(samples, rotation=45, ha='right', fontsize=9)
+    ax1.set_ylim([0, 105])
+    ax1.axhline(y=80, color='red', linestyle='--', alpha=0.5)
+    ax1.grid(axis='y', alpha=0.3)
+    for bar, val in zip(bars1, std_conf):
+        ax1.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2,
+                f'{val:.0f}%', ha='center', va='bottom', fontsize=9, weight='bold')
+    
+    # Bayesian
+    bars2 = ax2.bar(x, bay_conf, yerr=bay_std, capsize=5,
+                    color='#A23B72', alpha=0.8, width=0.6)
+    ax2.set_ylabel('Confidence (%)', fontsize=11, weight='bold')
+    ax2.set_title('Bayesian Predictions (MC Dropout)', fontsize=12, weight='bold')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels([f"{s}\n({mi:.2f})" for s, mi in zip(samples, bay_mi)], 
+                        rotation=45, ha='right', fontsize=8)
+    ax2.set_ylim([0, 105])
+    ax2.grid(axis='y', alpha=0.3)
+    for i, (bar, val) in enumerate(zip(bars2, bay_conf)):
+        ax2.text(bar.get_x() + bar.get_width()/2., bar.get_height() + bay_std[i] + 3,
+                f'{val:.0f}%', ha='center', va='bottom', fontsize=9, weight='bold')
+    
+    avg_gap = np.mean(std_conf) - np.mean(bay_conf)
+    plt.suptitle(f'Confidence Gap: {avg_gap:.0f} percentage points', fontsize=13, weight='bold')
+    plt.tight_layout()
+    plt.savefig('figures/01_confidence_gap.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"      → Average standard confidence: {np.mean(std_conf):.1f}%")
+    print(f"      → Average Bayesian confidence: {np.mean(bay_conf):.1f}%")
+    print(f"      → Confidence gap: {avg_gap:.1f}%")
+    
+    # FIGURE 2: Entropy Distribution
+    print("\n[2/3] Entropy distribution (1000 samples)...")
+    
+    key, sample_key = jax.random.split(key)
+    large_indices = jax.random.choice(sample_key, len(X_test), shape=(1000,), replace=False)
+    
+    entropies = []
+    for i, idx in enumerate(large_indices):
+        if (i + 1) % 250 == 0:
+            print(f"      → {i+1}/1000 samples processed...", end='\r')
+        x_sample = X_test[idx:idx+1]
+        key, subkey = jax.random.split(key)
+        results = mc_predict(trained_params, x_sample, subkey, p=0.25, num_samples=100)
+        entropies.append(float(results['predictive_entropy'][0]))
+    
+    print(f"      → 1000/1000 samples processed    ")
+    entropies = np.array(entropies)
+    
+    plt.figure(figsize=(10, 6))
+    plt.hist(entropies, bins=30, alpha=0.7, color='#2E86AB', edgecolor='black')
+    
+    mean_ent = np.mean(entropies)
+    median_ent = np.median(entropies)
+    plt.axvline(mean_ent, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_ent:.3f}')
+    plt.axvline(median_ent, color='green', linestyle='--', linewidth=2, label=f'Median: {median_ent:.3f}')
+    
+    plt.xlabel('Predictive Entropy', fontsize=11, weight='bold')
+    plt.ylabel('Frequency', fontsize=11, weight='bold')
+    plt.title('Entropy Distribution (1000 samples)', fontsize=12, weight='bold')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig('figures/02_entropy_distribution.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"      → Mean entropy: {mean_ent:.3f}")
+    print(f"      → Range: [{np.min(entropies):.3f}, {np.max(entropies):.3f}]")
+    
+    # FIGURE 3: MC Dropout vs Ensemble
+    print("\n[3/3] MC Dropout vs Ensemble comparison...")
+    
+    idx = sample_indices[0]
+    x_sample = X_test[idx:idx+1]
+    y_true = y_test[idx]
+    
+    # MC Dropout
+    key, subkey = jax.random.split(key)
+    mc_results = mc_predict(trained_params, x_sample, subkey, p=0.25, num_samples=100)
+    mc_pred = mc_results['mean_predictions'][0]
+    mc_std = mc_results['std'][0]
+    mc_mi = float(mc_results['mutual_information'][0])
+    
+    # Ensemble
+    ens_mean, ens_all = ensemble_predict(ensemble, x_sample)
+    ens_results = compute_ensemble_uncertainty(ens_all)
+    ens_pred = ens_results['mean_predictions'][0]
+    ens_std = ens_results['std'][0]
+    ens_mi = float(ens_results['mutual_information'][0])
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    x_pos = range(len(class_names))
+    
+    # MC Dropout
+    ax1.bar(x_pos, mc_pred, yerr=mc_std, capsize=5, alpha=0.8, color='#A23B72')
+    ax1.set_ylabel('Probability', fontsize=11, weight='bold')
+    ax1.set_title(f'MC Dropout\n{class_names[y_true]} | MI: {mc_mi:.3f}', fontsize=12, weight='bold')
+    ax1.set_xticks(x_pos)
+    ax1.set_xticklabels(class_names, rotation=45, ha='right', fontsize=9)
+    ax1.set_ylim([0, 1.0])
+    ax1.grid(axis='y', alpha=0.3)
+    
+    # Ensemble
+    ax2.bar(x_pos, ens_pred, yerr=ens_std, capsize=5, alpha=0.8, color='#2E86AB')
+    ax2.set_ylabel('Probability', fontsize=11, weight='bold')
+    ax2.set_title(f'Ensemble\n{class_names[y_true]} | MI: {ens_mi:.3f}', fontsize=12, weight='bold')
+    ax2.set_xticks(x_pos)
+    ax2.set_xticklabels(class_names, rotation=45, ha='right', fontsize=9)
+    ax2.set_ylim([0, 1.0])
+    ax2.grid(axis='y', alpha=0.3)
+    
+    mi_reduction = (1 - ens_mi/mc_mi) * 100 if mc_mi > 0 else 0
+    plt.suptitle(f'Method Comparison (MI reduction: {mi_reduction:.0f}%)', fontsize=13, weight='bold')
+    plt.tight_layout()
+    plt.savefig('figures/03_mc_vs_ensemble.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"      → MC Dropout MI: {mc_mi:.3f}")
+    print(f"      → Ensemble MI: {ens_mi:.3f}")
+    print(f"      → Reduction: {mi_reduction:.0f}%")
+    
+    print("\n" + "="*70)
+    print("✓ 3 FIGURES SAVED TO ./figures/")
+    print("="*70)
+    print("  01_confidence_gap.png       - Standard vs Bayesian predictions")
+    print("  02_entropy_distribution.png - Uncertainty across 1000 samples")
+    print("  03_mc_vs_ensemble.png       - Method comparison")
+    print("="*70 + "\n")
 
 def main():
     """Main function which demonstrates the entire ML Pipeline"""
