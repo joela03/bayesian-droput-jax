@@ -627,9 +627,9 @@ def plot_uncertainty(mean_probs, std_probs, class_names, filename):
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     plt.close()
 
-def create_visualization_figures(trained_params, ensemble, X_test, y_test, class_names, key):
+def create_visualisation_figures(trained_params, ensemble, X_test, y_test, class_names, key):
     """
-    Generate 3 key visualization figures:
+    Generate 3 key_visualisation figures:
     1. Standard vs Bayesian comparison (shows the confidence gap)
     2. Entropy distribution across 1000 samples
     3. MC Dropout vs Ensemble comparison
@@ -640,7 +640,7 @@ def create_visualization_figures(trained_params, ensemble, X_test, y_test, class
     os.makedirs('figures', exist_ok=True)
     
     print("\n" + "="*70)
-    print("CREATING VISUALIZATION FIGURES")
+    print("CREATING_visualisation FIGURES")
     print("="*70)
     
     # Select samples
@@ -912,7 +912,7 @@ def main():
     test_with_uncertainty(trained_params, X_test, y_test, class_names, mc_key, sample_indices)
 
     key, viz_key = jax.random.split(key)
-    create_visualization_figures(
+    create_visualisation_figures(
         trained_params, 
         ensemble, 
         X_test, 
