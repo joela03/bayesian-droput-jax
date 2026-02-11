@@ -275,7 +275,7 @@ def create_batches(X, y, batch_size, key):
 
     return batches
 
-def mc_predict(params, x, key, p=0.5, num_samples=100):
+def mc_predict(params, x, key, p=0.25, num_samples=100):
     """
     Multiple forward passes with dropout for uncertainty estimation
     
